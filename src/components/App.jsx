@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import '../styles.css';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
@@ -7,77 +7,75 @@ import Button from './Button/Button';
 import Modal from './Modal/Modal';
 import { fetchImages } from 'Api/Api';
 
-class App extends Component {
-  state = {
-    images: [],
-    query: '',
-    page: 1,
-    isLoading: false,
-    showModal: false,
-    selectedImage: '',
-  };
+function App() {
+  const [images, setImages] = useState([]);
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState('');
 
-  fetchImages = () => {
-    const { query, page } = this.state;
+  const fetchImagesData = useCallback(() => {
     const perPage = 12;
-
-    this.setState({ isLoading: true });
+    setIsLoading(true);
 
     fetchImages(query, page, perPage)
       .then(response => {
-        this.setState(prevState => ({
-          images: [...prevState.images, ...response.data.hits],
-          page: prevState.page + 1,
-        }));
+        setImages(prevImages => [...prevImages, ...response.data.hits]);
+        setPage(prevPage => prevPage + 1);
       })
       .catch(error => console.error('Error fetching images: ', error))
       .finally(() => {
-        this.setState({ isLoading: false });
+        setIsLoading(false);
       });
+  }, [query, page]);
+
+  const handleSearch = newQuery => {
+    setQuery(newQuery);
+    setPage(1);
+    setImages([]);
   };
 
-  handleSearch = query => {
-    this.setState({ query, page: 1, images: [] }, this.fetchImages);
+  const handleImageClick = largeImageURL => {
+    setShowModal(true);
+    setSelectedImage(largeImageURL);
   };
 
-  handleLoadMore = () => {
-    this.fetchImages();
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setSelectedImage('');
   };
 
-  handleImageClick = largeImageURL => {
-    this.setState({ showModal: true, selectedImage: largeImageURL });
+  const handleLoadMore = () => {
+    fetchImagesData();
   };
 
-  handleCloseModal = () => {
-    this.setState({ showModal: false, selectedImage: '' });
-  };
+  useEffect(() => {
+    if (query !== '') {
+      fetchImagesData();
+    }
+  }, [query, page, fetchImagesData]);
 
-  render() {
-    const { images, isLoading, showModal, selectedImage } = this.state;
-
-    return (
-      <div className="App">
-        <Searchbar onSubmit={this.handleSearch} />
-        <ImageGallery>
-          {images.map(image => (
-            <ImageGalleryItem
-              key={image.id}
-              src={image.webformatURL}
-              alt=""
-              onClick={() => this.handleImageClick(image.largeImageURL)}
-            />
-          ))}
-        </ImageGallery>
-        {isLoading && <div className="loader">Loading...</div>}
-        {images.length > 0 && !isLoading && (
-          <Button onClick={this.handleLoadMore} />
-        )}
-        {showModal && (
-          <Modal src={selectedImage} alt="" onClose={this.handleCloseModal} />
-        )}
-      </div>
-    );
-  }
+  return (
+    <div className="App">
+      <Searchbar onSubmit={handleSearch} />
+      <ImageGallery>
+        {images.map(image => (
+          <ImageGalleryItem
+            key={image.id}
+            src={image.webformatURL}
+            alt=""
+            onClick={() => handleImageClick(image.largeImageURL)}
+          />
+        ))}
+      </ImageGallery>
+      {isLoading && <div className="loader">Loading...</div>}
+      {images.length > 0 && !isLoading && <Button onClick={handleLoadMore} />}
+      {showModal && (
+        <Modal src={selectedImage} alt="" onClose={handleCloseModal} />
+      )}
+    </div>
+  );
 }
 
 export default App;
