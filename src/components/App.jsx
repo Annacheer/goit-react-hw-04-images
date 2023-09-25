@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import '../styles.css';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
@@ -14,21 +14,6 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState('');
-
-  const fetchImagesData = useCallback(() => {
-    const perPage = 12;
-    setIsLoading(true);
-
-    fetchImages(query, page, perPage)
-      .then(response => {
-        setImages(prevImages => [...prevImages, ...response.data.hits]);
-        setPage(prevPage => prevPage + 1);
-      })
-      .catch(error => console.error('Error fetching images: ', error))
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [query, page]);
 
   const handleSearch = newQuery => {
     setQuery(newQuery);
@@ -46,15 +31,21 @@ function App() {
     setSelectedImage('');
   };
 
-  const handleLoadMore = () => {
-    fetchImagesData();
-  };
-
   useEffect(() => {
     if (query !== '') {
-      fetchImagesData();
+      const perPage = 12;
+      setIsLoading(true);
+
+      fetchImages(query, page, perPage)
+        .then(response => {
+          setImages(prevImages => [...prevImages, ...response.data.hits]);
+        })
+        .catch(error => console.error('Error fetching images: ', error))
+        .finally(() => {
+          setIsLoading(false);
+        });
     }
-  }, [query, page, fetchImagesData]);
+  }, [query, page]);
 
   return (
     <div className="App">
@@ -70,7 +61,9 @@ function App() {
         ))}
       </ImageGallery>
       {isLoading && <div className="loader">Loading...</div>}
-      {images.length > 0 && !isLoading && <Button onClick={handleLoadMore} />}
+      {images.length > 0 && !isLoading && (
+        <Button onClick={() => setPage(prevPage => prevPage + 1)} />
+      )}
       {showModal && (
         <Modal src={selectedImage} alt="" onClose={handleCloseModal} />
       )}
